@@ -1,0 +1,142 @@
+58/5000 
+There are many articles on installing DNS on the Internet, but many users still don't know how to install it. 
+Today, I will give you the detailed steps of how to install DNS server correctly。
+網絡上關於安裝DNS的文章很多，可是還有很多用戶不清楚如何安裝，今天給大家帶來的是如何正確安裝DNS服務器的詳細步驟
+
+一、升級系統及安裝相關服務組件，請運行下面的命令
+
+$ sudo apt-get update
+$ sudo apt install -y bind9 bind9utils bind9-doc dnsutils net-tools
+
+# 如果無法跨系統複製粘貼命令請安裝下面的組件。
+$ sudo apt-get install open-vm-tools-desktop  
+
+
+二、配置文件：命令和模板，正向查找zone文件，反向查找zone文件，用你喜歡的編輯器(nano vi vim)都可以
+
+$ sudo nano /etc/bind/named.conf.local
+
+# 後面所有的域名，我將使用‘example’來代替你們自己的域名，你可以取你喜歡的域名。
+修改文件中的‘example’，用你喜歡的域名代替就可以。
+
+zone "example.local" IN { // Domain name
+    
+      type master; // Primary DNS
+
+     file "/etc/bind/forward.example.local.db"; // Forward lookup file
+
+     allow-update { none; }; // Since this is the primary DNS, it should be none.
+
+};
+zone "0.168.192.in-addr.arpa" IN { //Reverse lookup name, should match your network in reverse order
+
+     type master; // Primary DNS
+
+     file "/etc/bind/reverse.example.local.db"; //Reverse lookup file
+
+     allow-update { none; }; //Since this is the primary DNS, it should be none.
+
+};
+
+三、這一步非常重要，我們要編輯正向查找文件和反向查找文件
+
+A:複製/etc/bind/db.local 到/etc/bind/forward.example.local.db, 編輯創建的文件,下面是命令和模板, 域名後面要加‘.’，使用下面的命創建文件
+$ sudo cp /etc/bind/db.local /etc/bind/forward.example.local.db
+請使用下面的命令編輯
+$ sudo nano /etc/bind/forward.example.local.db
+
+請按照下面的修改
+$TTL    604800
+@       IN      SOA     ns1.example.local. root.example.local. (
+                              3         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+;@      IN      NS      localhost.
+;@      IN      A       127.0.0.1
+;@      IN      AAAA    ::1
+
+;Name Server Information
+
+@        IN      NS      ns1.example.local.   # 域名有幾個都要寫在這裡，這是全局設置。@代表本機ip
+
+;IP address of Name Server
+
+ns1     IN      A       000.000.000.000    # 此處寫下你的ip地址
+
+;Mail Exchanger  # 沒有郵箱下面可以不寫
+
+example.local.   IN     MX   10   mail.example.local.
+
+;A – Record HostName To Ip Address #沒有下面可以不寫
+
+www     IN       A      192.168.0.100
+mail    IN       A      192.168.0.150
+
+;CNAME record
+
+
+B:複製/etc/bind/db.127 到/etc/bind/reverse.example.local.db,編輯創建下面的文件,下面是命令和模板，域名後面要加‘.’切記
+複製文件
+$ sudo cp /etc/bind/db.127 /etc/bind/reverse.example.local.db
+編輯文件
+$ sudo nano /etc/bind/reverse.example.local.db
+
+請按照下面修改
+$TTL    604800
+@       IN      SOA     example.local. root.example.local. (
+                              3         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+;@      IN      NS      localhost.
+;1.0.0  IN      PTR     localhost.
+
+;Name Server Information
+
+@       IN      NS     ns1.example.local.    #有幾個域名都要寫在這裡 
+
+;Reverse lookup for Name Server
+
+10      IN      PTR    ns1.example.local.  # 10是你的ip地址的最後幾位，有幾個服務器的反向查找ip最後幾位地址都要下載這裡
+
+;PTR Record IP address to HostName #沒有可以不寫下面內容
+
+100     IN      PTR    www.example.local.
+150     IN      PTR    mail.example.local.
+
+四、检查有編輯错误，請使用下面的命令
+
+$ sudo named-checkconf
+$ sudo named-checkzone example.local /etc/bind/forward.example.local.db
+named-checkzone 0.168.192.in-addr.arpa /etc/bind/reverse.example.local.db
+
+
+五、重启相關服务
+$ sudo systemctl restart bind9
+$ sudo systemctl enable bind9   
+查看服務狀態
+sudo systemctl status bind9
+
+請使用下面的命令查看域名服務是否安裝成功
+$ nslookup  
+>你的IP地址，按enter鍵
+此處會顯示相關信息
+>你的域名地址，按enter鍵
+此處會顯示你的域名地址對應的ip地址
+
+Congratulations, DNS server has been installed successfully!
+恭喜你，DNS服務器已經成功安裝！
+
+Please share if it helps！
+如果對大家有幫助請分享！
+
+
+
+
+
+
